@@ -1,24 +1,167 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Arch Linux WebXR Test</title>
+    <meta charset="utf-8">
+    <title>Arch Linux VR - Interactive World</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- 1. Core A-Frame Engine -->
     <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    
+    <!-- 2. Environment Generator -->
     <script src="https://unpkg.com/aframe-environment-component@1.3.7/dist/aframe-environment-component.min.js"></script>
+    
+    <!-- 3. Teleport/Blink Controls for VR Locomotion -->
+    <script src="https://unpkg.com/aframe-blink-controls@1.4.0/dist/aframe-blink-controls.min.js"></script>
+
+    <!-- 4. Our Custom Interaction Logic (Written in pure JS) -->
+    <script>
+      // We register a custom A-Frame component called "interactive-element"
+      AFRAME.registerComponent('interactive-element', {
+        init: function () {
+          const el = this.el; // The entity this component is attached to
+
+          // When the laser pointer (or mouse) enters the object
+          el.addEventListener('mouseenter', () => {
+            el.setAttribute('scale', '1.2 1.2 1.2'); // Grow by 20%
+          });
+
+          // When the laser pointer leaves
+          el.addEventListener('mouseleave', () => {
+            el.setAttribute('scale', '1 1 1'); // Shrink back to normal
+          });
+
+          // When the user clicks (or pulls the Quest trigger)
+          el.addEventListener('mousedown', () => {
+            // Generate a random hex color
+            const randomColor = '#' + Math.floor(Math.random()*16777215).toString(16);
+            
+            // If the object has a color attribute, change it
+            if (el.getAttribute('color')) {
+              el.setAttribute('color', randomColor);
+            }
+
+            // Make the object spin 360 degrees on the Y axis
+            el.setAttribute('animation', {
+              property: 'rotation',
+              to: '0 360 0',
+              loop: false,
+              dur: 1000,
+              easing: 'easeInOutQuad'
+            });
+          });
+        }
+      });
+    </script>
   </head>
   <body>
-    <a-scene>
-      <a-entity environment="preset: forest; dressingAmount: 500"></a-entity>
+    <!-- The Scene -->
+    <a-scene cursor="rayOrigin: mouse">
+      
+      <!-- ASSET MANAGER: Pre-load heavy files here before the scene renders -->
+      <a-assets>
+        <!-- A public domain 3D Duck model from the Khronos glTF Sample repository -->
+        <a-asset-item id="duck-model" src="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/Duck/glTF-Binary/Duck.glb"></a-asset-item>
+      </a-assets>
 
-      <a-box position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9" shadow></a-box>
-      <a-sphere position="0 1.25 -5" radius="1.25" color="#EF2D5E" shadow></a-sphere>
-      <a-cylinder position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D" shadow></a-cylinder>
-      <a-plane position="0 0 -4" rotation="-90 0 0" width="4" height="4" color="#7BC8A4" shadow></a-plane>
+      <!-- ENVIRONMENT: We'll use the 'egypt' preset for a cool desert vibe -->
+      <a-entity environment="preset: egypt; skyType: atmosphere; lighting: point"></a-entity>
 
-      <a-entity id="rig">
-        <a-camera position="0 1.6 0"></a-camera>
-        <a-entity oculus-touch-controls="hand: left"></a-entity>
-        <a-entity oculus-touch-controls="hand: right"></a-entity>
+      <!-- NAVIGATION MESH: An invisible floor that tells the teleport laser where it's safe to land -->
+      <a-plane class="navmesh" rotation="-90 0 0" width="100" height="100" visible="false"></a-plane>
+
+
+      <!-- === INTERACTIVE OBJECTS === -->
+      
+      <!-- 1. The Imported 3D Model -->
+      <!-- We add the 'clickable' class so the laser raycaster knows to interact with it -->
+      <a-entity 
+        gltf-model="#duck-model" 
+        position="0 0.5 -3" 
+        scale="1 1 1"
+        class="clickable"
+        interactive-element>
       </a-entity>
+
+      <!-- 2. A Floating Holographic Torus Knot -->
+      <a-torus-knot 
+        position="3 1.5 -4" 
+        color="#00ffcc" 
+        radius="0.5" 
+        radius-tubular="0.05"
+        class="clickable"
+        interactive-element
+        animation="property: rotation; to: 360 360 0; loop: true; dur: 10000; easing: linear">
+      </a-torus-knot>
+
+      <!-- 3. A Simple Box -->
+      <a-box 
+        position="-3 1 -4" 
+        color="#ff4444" 
+        class="clickable"
+        interactive-element>
+      </a-box>
+
+      <!-- === ORNAMENTAL & BEAUTIFICATION ELEMENTS === -->
+
+      <!-- The Oasis Water -->
+      <a-cylinder 
+        position="0 0.05 -8" 
+        radius="6" 
+        height="0.1" 
+        color="#00aaff" 
+        material="opacity: 0.6; transparent: true; roughness: 0.1">
+      </a-cylinder>
+
+      <!-- Ancient Obelisks (Left and Right of the Oasis) -->
+      <a-cone position="-5 2.5 -8" radius-bottom="0.8" radius-top="0.1" height="5" color="#d2b48c"></a-cone>
+      <a-cone position="5 2.5 -8" radius-bottom="0.8" radius-top="0.1" height="5" color="#d2b48c"></a-cone>
+      <a-cone position="-3 2.5 -13" radius-bottom="0.8" radius-top="0.1" height="5" color="#d2b48c"></a-cone>
+      <a-cone position="3 2.5 -13" radius-bottom="0.8" radius-top="0.1" height="5" color="#d2b48c"></a-cone>
+
+      <!-- Mystical Floating Crystal (Over the Oasis) -->
+      <a-entity position="0 3 -8" animation="property: position; to: 0 3.5 -8; dir: alternate; dur: 2000; loop: true; easing: easeInOutSine">
+        <a-octahedron 
+          radius="0.7" 
+          color="#ff00ff" 
+          material="wireframe: false"
+          class="clickable"
+          interactive-element
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 5000; easing: linear">
+        </a-octahedron>
+        <!-- A glowing light emitting from the crystal -->
+        <a-light type="point" color="#ff00ff" intensity="2" distance="10"></a-light>
+      </a-entity>
+
+      <!-- Scattered Interactive Gems around the water -->
+      <a-dodecahedron position="-2 0.5 -6" radius="0.3" color="#ffff00" class="clickable" interactive-element></a-dodecahedron>
+      <a-dodecahedron position="2 0.5 -7" radius="0.3" color="#00ff00" class="clickable" interactive-element></a-dodecahedron>
+      <a-dodecahedron position="0 0.5 -11" radius="0.3" color="#ff8800" class="clickable" interactive-element></a-dodecahedron>
+
+      <!-- === THE PLAYER RIG (Crucial for Meta Quest 3) === -->
+      <a-entity id="rig" position="0 0 0">
+        
+        <!-- The Camera (Your Eyes) -->
+        <a-camera id="camera" position="0 1.6 0"></a-camera>
+
+        <!-- LEFT HAND: Dedicated to Teleportation -->
+        <a-entity 
+          id="left-hand" 
+          oculus-touch-controls="hand: left"
+          blink-controls="cameraRig: #rig; teleportOrigin: #camera; collisionEntities: .navmesh; button: thumbstick; curveTint: #00ffcc">
+        </a-entity>
+
+        <!-- RIGHT HAND: Dedicated to Interaction (Laser Pointer) -->
+        <!-- We tell the raycaster to ONLY intersect with objects that have the 'clickable' class -->
+        <a-entity 
+          id="right-hand" 
+          oculus-touch-controls="hand: right"
+          laser-controls="hand: right" 
+          raycaster="objects: .clickable; far: 20; lineColor: #ff0055">
+        </a-entity>
+
+      </a-entity>
+
     </a-scene>
   </body>
 </html>
